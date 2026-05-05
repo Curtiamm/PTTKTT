@@ -1,0 +1,405 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=ks_c_5601-1987">
+<title>The waste collection vehicle routing problem with time windows</title>
+<style>
+<!--
+ p.MsoNormal
+	{mso-style-parent:"";
+	margin-bottom:.0001pt;
+	text-align:justify;
+	text-justify:inter-ideograph;
+	line-height:18.0pt;
+	punctuation-wrap:simple;
+	text-autospace:none;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	margin-left:0in; margin-right:0in; margin-top:0in}
+table.MsoTableGrid
+	{border:1.0pt solid windowtext;
+	text-align:justify;
+	text-justify:inter-ideograph;
+	line-height:18.0pt;
+	punctuation-wrap:simple;
+	text-autospace:none;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	}
+-->
+</style>
+</head>
+
+<body bgcolor="#C0C0C0">
+
+<p class="MsoNormal" align="left" style="text-align: center; line-height: 200%">
+<b><span style="line-height: 200%"><font size="5">The waste collection vehicle 
+routing problem with time windows</font></span></b></p>
+<p class="MsoNormal" align="left" style="text-align: center; line-height: 200%">
+<font size="5"><b>(waste collection VRPTW)</b></font></p>
+<p class="MsoNormal" align="left" style="text-align: center; line-height: 200%">　</p>
+<p class="MsoNormal" align="left" style="line-height: 200%"><font size="4"><b>1. 
+Introduction</b></font></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">As with a typical vehicle 
+routing problems with time windows (VRPTW), it is assumed that there is a single 
+depot per site, an operational area (such as a city or county), a finite number 
+of homogeneous vehicles, a set of stops, and dump sites (transfer stations or 
+landfill facilities) in the waste collection VRPTW. The constraints specific to 
+landfills are a major component of the routing model for waste collection 
+companies. When a vehicle is full, it needs to go to the closest available 
+disposal facility. Each vehicle can, and typically does, make multiple disposal 
+trips per day. </span></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">Each stop has a time window, 
+i.e., earliest and latest allowable service starting time, and its pick-up 
+amount or demand. Each vehicle has its capacity and time window, i.e., ready 
+time and due depot return time. Vehicles start from the depot, pick up materials 
+from the stops until they are full, dump them at one of the dump sites, repeat 
+pick up and dumping, and finally return to the depot. The vehicle drivers are 
+assumed to take a one-hour lunch break between 11 a.m. and 1 p.m. </span></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">Two main capacity constraints 
+are considered when creating a route: vehicle capacity and route capacity. 
+Vehicle capacity is the maximum volume and weight that each vehicle can hold. 
+Route capacity is the daily capacity for each driver: maximum number of stops, 
+maximum number of lifts, maximum volume and weight that a driver can handle per 
+day. A garbage collection company's business rules set the route capacity 
+constraints and route time. Vehicle capacity dictates when a disposal trip 
+should be made. If the vehicle capacity is larger than the route’s volume 
+capacity, there will be only one disposal trip and it will be the last visit 
+before returning to the depot. If, however, the route’s volume capacity is more 
+than vehicle capacity, multiple disposal trips will be needed in a route. Since 
+there are multiple disposal facilities available, careful selection of the best 
+disposal is critical. Each vehicle is assumed to start from a depot and finish 
+at the depot with zero volume. The typical problem size experienced at Waste 
+Management Inc. ranges between 10,000 and 54,000 commercial stops per depot per 
+week. </span><span style="font-size: 12.0pt; line-height: 200%">Thus, the daily 
+problem size ranges between approximately 2,000 and 10,000 per depot.</span></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">While minimizing the number 
+of vehicles and total travel time is the major objective of VRPTW in the 
+literature, the route compactness of a solution is very important to WM. The 
+route compactness depends on how the stops are grouped into a route. A solution 
+in which many routes cross over each other is less compact than one in which 
+there are no overlapping routes. Balancing work among the vehicles is also 
+important for implementation of a solution in the field. Our problem is 
+summarized as follows.&nbsp; </span></p>
+<p class="MsoNormal" style="line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: .3in">
+<span style="font-size: 12.0pt; line-height: 200%">Objectives:&nbsp; </span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Minimize number 
+of vehicles</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Minimize travel 
+time </span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Maximize route 
+compactness </span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Balance 
+workload among the vehicles</span></p>
+<p class="MsoNormal" style="line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: .3in">
+<span style="font-size: 12.0pt; line-height: 200%">Constraints: </span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Time windows of 
+stops and the depot</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Vehicle 
+Capacity (i.e., volume, weight)</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Route Capacity 
+(i.e., the maximum number of lifts, volume and weight that can be handled per 
+vehicle per day)</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Routing time 
+limit per vehicle</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Disposal trips 
+(i.e., when a vehicle is full, it must go to a disposal facility)</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in; margin-right: 0in; margin-top: 0in; margin-bottom: 12.0pt">
+<span style="font-size: 12.0pt; line-height: 200%; font-family: Symbol">·<span style="font-style: normal; font-variant: normal; font-weight: normal; font-size: 7.0pt; font-family: Times New Roman">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style="font-size: 12.0pt; line-height: 200%">Driver’s lunch 
+break</span></p>
+<p class="MsoNormal" style="text-indent: 0in; line-height: 200%"><font size="4">
+<b>2. Benchmark Problem</b></font></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">Since there are no publicly 
+available benchmark problems of the waste collection VRPTW, we extracted several 
+problems from the real world problems and present them here (http://www.e-iit.com/waste-VRPTW/benchmark.html) 
+for other researchers in this area. Each problem has four lines of basic 
+information, one line of stop data header, and multiple lines of stop data. Four 
+lines of basic information include vehicle capacity, total yards allowed for a 
+vehicle per day, total number of stops allowed for a vehicle per day, lunch 
+break time in seconds, default speed in mile per hour, and stop data. A vehicle 
+cannot handle more than the total yards allowed for a vehicle or the total 
+number of stops allowed. The default speed in mile per hour is for 
+origin-destination (OD) matrix construction. Although we apply a shortest-path 
+algorithm to geographic information system (GIS) to obtain OD matrix, i.e., 
+travel time between any two stops, it is hard to publish those ODs on the 
+Internet because of their sizes. &nbsp;For example, the size of the OD matrix for 
+1599_stop.txt is about 80 MB. Thus, we recommend readers to use the default 
+speed provided and the Manhattan distance for the calculation of OD matrix. For 
+example, the travel time between stop 0 (x coordinate=1215029, y 
+coordinate=3461398) and stop 1 (1229125, 3460107) in 102_stop.txt is 262.3 
+seconds. The Manhattan distance between them is 15387 feet and it is 2.914 mile. 
+Since the default speed is 40 MPH, the travel time is 2.914 mile * 3600 seconds 
+/ 40 mile, which is 262.3 seconds. Our computational results in this section is 
+also based on this method of OD calculation.</span></p>
+<p class="MsoNormal" style="text-indent: .3in; line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">Individual stop has 
+information of stop id, x coordinate in feet, y coordinate in feet, earliest 
+service starting time in HHMM format, latest service starting time in HHMM 
+format, service time in seconds, load in yards, and stop type. In HHMM format, 
+the first two digits show hour and the remaining digits show minute. For 
+example, 1030 stands for 10:30 AM and 1445 stands for 2:45 PM. The depot has 
+stop type of 0, a landfill or transfer station has stop type 2, and a regular 
+stop has stop type 1. Table 1 shows the characteristics of the problems sets.
+</span></p>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; margin-left: 1.0in; margin-right: 0in; margin-top: 0in; margin-bottom: 12.0pt">　</p>
+<p class="MsoNormal" align="left" style="line-height: 200%">
+<span style="font-size: 12.0pt; line-height: 200%">Table 1. Waste VRPTW 
+benchmark problem sets </span></p>
+<table class="MsoTableGrid" border="1" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: medium none">
+  <tr>
+    <td width="109" style="width: 81.9pt; border: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Problem Set</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: 1.0pt solid windowtext; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Number of stops</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: 1.0pt solid windowtext; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Vehicle cubic yards capacity</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: 1.0pt solid windowtext; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Route cubic yards</span></p>
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">capacity/day</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: 1.0pt solid windowtext; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Route </span></p>
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">max stop count/day</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: 1.0pt solid windowtext; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; text-align: left">
+    <span style="font-size: 12.0pt">Depot Operating hours</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="102_stop.txt">102_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">102</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">280.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">400.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">11</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="277_stop.txt">277_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">277</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">200.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">2200.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">9</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="335_stop.txt">335_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">335</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">243.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">400.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">9</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="444_stop.txt">444_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">444</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">200.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">400.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">9</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="804_stop.txt">804_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">804</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">280.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">10000.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">11</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="1051_stop.txt">1051_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">1051</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">200.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">800.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">13</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="1351_stop.txt">1351_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">1351</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">255.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">800.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">13</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="1599_stop.txt">1599_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">1599</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">280.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">800.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">11</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="1932_stop.txt">1932_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">1932</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">462.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">2000.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">14</span></td>
+  </tr>
+  <tr>
+    <td width="109" style="width: 81.9pt; border-left: 1.0pt solid windowtext; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="left" style="line-height: normal">
+    <span style="font-size: 12.0pt"><a href="2100_stop.txt">2100_stop.txt</a></span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">2100</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">462.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">2000.0</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">500</span></td>
+    <td width="100" style="width: 74.7pt; border-left: medium none; border-right: 1.0pt solid windowtext; border-top: medium none; border-bottom: 1.0pt solid windowtext; padding-left: 5.4pt; padding-right: 5.4pt; padding-top: 0in; padding-bottom: 0in">
+    <p class="MsoNormal" align="center" style="line-height: normal; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left">
+    <span style="font-family: Arial">11</span></td>
+  </tr>
+</table>
+<p class="MsoNormal" style="text-indent: -.25in; line-height: 200%; punctuation-wrap: hanging; text-autospace: ideograph-numeric ideograph-other; text-align: left; margin-left: 1.0in; margin-right: 0in; margin-top: 0in; margin-bottom: 12.0pt">　</p>
+
+</body>
+
+</html>
