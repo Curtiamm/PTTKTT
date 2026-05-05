@@ -141,7 +141,7 @@ benchmarks = {
 }
 
 if __name__ == '__main__':
-    d = r"d:\Thuật Toán\Code GitHub\WCVRPTW-benchmark-main\instances"
+    d = os.path.join("Code GitHub", "WCVRPTW-benchmark-main", "instances")
     files = sorted([f for f in os.listdir(d) if f.endswith('.txt')], key=lambda x: int(x.split('_')[0]))
     
     print("-" * 88)

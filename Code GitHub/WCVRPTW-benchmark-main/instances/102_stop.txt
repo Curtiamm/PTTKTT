@@ -1,4 +1,4 @@
-280.0 				// vehicle capacity (yards), real number
+    280.0 				// vehicle capacity (yards), real number
 400.0				// total yardage allowed for a vehicle per day, real number
 500				// total number of regular stops for a vehicle allowed per day
 3600				// lunch time duration in second, lunch time should start between 11:00am and 12:00 pm
