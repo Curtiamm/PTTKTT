@@ -24,7 +24,7 @@ It provides an efficient routing solution using dual-heuristic algorithms and fe
 To run the solver and the GUI, ensure you have Python 3.8+ installed. You can install the required dependencies using pip:
 
 ```bash
-pip install streamlit pandas numpy matplotlib
+pip install streamlit plotly
 ```
 
 ## Usage
