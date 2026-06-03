@@ -62,6 +62,66 @@ class MetricsCalculator:
             
         return max(rtds) - min(rtds) if rtds else 0.0
 
+    def calc_violations(self, routes):
+        tw_viols = 0
+        cap_viols = 0
+        
+        for r in routes:
+            if r.is_empty(): continue
+            
+            # Check capacity violations
+            if len(r) > self.d.max_stops:
+                cap_viols += (len(r) - self.d.max_stops) * 10
+            
+            route_load = sum(self.d.nodes[n].demand for n in r)
+            if route_load > self.d.route_capacity:
+                cap_viols += (route_load - self.d.route_capacity) * 2
+                
+            curr_time = self.d.start_time
+            curr_pos = 0
+            ld = 0.0
+            lunch_check = False
+            
+            for node_id in r:
+                node = self.d.nodes[node_id]
+                
+                if ld + node.demand > self.d.vehicle_capacity:
+                    disp = self.d.get_closest_landfill(curr_pos)
+                    tv = self.d.travel_time(curr_pos, disp.id)
+                    curr_time += tv + disp.service
+                    curr_pos = disp.id
+                    ld = 0.0
+                    
+                tv = self.d.travel_time(curr_pos, node_id)
+                arr = curr_time + tv
+                
+                if arr > node.late:
+                    tw_viols += 1
+                    
+                arr = max(arr, node.early)
+                
+                if not lunch_check and arr >= self.d.start_time + 3.0:
+                    curr_time += self.d.lunch_duration
+                    lunch_check = True
+                    arr = max(curr_time + tv, node.early)
+                    if curr_time + tv > node.late:
+                        tw_viols += 1
+                        
+                curr_time = arr + node.service
+                curr_pos = node_id
+                ld += node.demand
+                
+            disp = self.d.get_closest_landfill(curr_pos)
+            curr_time += self.d.travel_time(curr_pos, disp.id) + disp.service
+            curr_time += self.d.travel_time(disp.id, 0)
+            
+            # Route duration capacity
+            if (curr_time - self.d.start_time) > 11.0:
+                cap_viols += int(curr_time - self.d.start_time - 11.0) * 10
+                
+        return tw_viols, cap_viols
+
+
     def calc_shape_metric(self, routes):
         sm = 0.0
         for r in routes:
