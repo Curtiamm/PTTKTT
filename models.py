@@ -28,15 +28,21 @@ class VRPData:
         self.start_time = self.depot.early
         
         self.distance_matrix = [[0.0] * self.num_nodes for _ in range(self.num_nodes)]
+        self.travel_time_matrix = [[0.0] * self.num_nodes for _ in range(self.num_nodes)]
         for i in range(self.num_nodes):
             for j in range(self.num_nodes):
                 self.distance_matrix[i][j] = abs(nodes[i].x - nodes[j].x) + abs(nodes[i].y - nodes[j].y)
+                self.travel_time_matrix[i][j] = self.distance_matrix[i][j] / self.speed
                 
+        self.closest_landfill = [None] * self.num_nodes
+        for i in range(self.num_nodes):
+            self.closest_landfill[i] = min(self.landfills, key=lambda l: self.distance_matrix[i][l.id])
+            
     def travel_time(self, i, j):
-        return self.distance_matrix[i][j] / self.speed
+        return self.travel_time_matrix[i][j]
         
     def get_closest_landfill(self, from_node_id):
-        return min(self.landfills, key=lambda l: self.distance_matrix[from_node_id][l.id])
+        return self.closest_landfill[from_node_id]
 
 class Route:
     def __init__(self, sequence=None):

@@ -16,43 +16,40 @@ class VRPTWSolver:
         self.insertion = ExtendedInsertion(self.d)
         self.metrics = MetricsCalculator(self.d)
         
-    def _sa_optimize(self, routes, iterations=100):
+    def _sa_optimize(self, routes, iterations=100, optimize_overlap=False):
         # Step 6: Enhanced SA meta-heuristic with ALNS operators
-        best_routes = [Route(list(r.sequence)) for r in routes]
         
-        # Hàm tính chi phí bao gồm cả Quãng đường (TD), Chồng chéo (Nh) và Cân bằng công việc (RTD)
-        # QUAN TRỌNG: Phạt cực nặng nếu vi phạm Time Window (TW) hoặc Tải trọng/Số trạm (Capacity)
-        def calc_cost(rts):
+        # Soft cost function
+        def calc_soft_cost(rts):
             td = self.metrics.calc_td(rts)
-            nh = self.metrics.calc_nh(rts)
-            rtd = self.metrics.calc_rtd(rts)
             tw_viols, cap_viols = self.metrics.calc_violations(rts)
+            # Soft penalty: 50.0 per violation to allow search space transitions
+            penalty = (tw_viols + cap_viols) * 50.0
+            if optimize_overlap:
+                nh = self.metrics.calc_nh(rts)
+                return td + (nh * 25.0) + penalty
+            return td + penalty
             
-            # Áp dụng Penalty đa mục tiêu:
-            # 1. Phạt cực nặng lỗi khả thi (TW, Capacity) để cấm SA tạo ra các tuyến đường không hợp lệ
-            # 2. Để phá kỷ lục Benchmark (giảm sai số TD xuống âm), ta ép trọng số của Nh và RTD xuống mức RẤT THẤP
-            #    nhằm định hướng AI ưu tiên tối đa hóa việc cắt giảm Quãng đường (TD).
-            penalty_infeasible = (tw_viols + cap_viols) * 100000.0
-            
-            # Trọng số mới: TD (giữ nguyên), Nh (chỉ phạt 2.0 dặm/điểm), RTD (chỉ phạt 0.5 dặm/giờ lệch)
-            return td + (nh * 2.0) + ((rtd / 3600.0) * 0.5) + penalty_infeasible
-            
-        best_cost = calc_cost(best_routes)
+        best_feasible_routes = [Route(list(r.sequence)) for r in routes]
+        best_feasible_cost = calc_soft_cost(best_feasible_routes)
         
         curr_routes = [Route(list(r.sequence)) for r in routes]
-        temp = 500.0  # Tăng nhiệt độ ban đầu để thuật toán "nhảy" thoát khỏi các cực tiểu địa phương (local minima) tốt hơn
-        # Tự động điều chỉnh hệ số hạ nhiệt (Cooling Rate) để nhiệt độ luôn về 0.1 ở vòng cuối
-        cooling = math.pow(0.0001, 1.0 / max(1, iterations)) 
+        curr_cost = calc_soft_cost(curr_routes)
         
-        for _ in range(iterations):
+        temp = 100.0  
+        cooling = math.pow(0.001, 1.0 / max(1, iterations)) 
+        
+        for it in range(iterations):
             valid_routes = [i for i, r in enumerate(curr_routes) if not r.is_empty()]
             if not valid_routes: break
             
             new_routes = [Route(list(r.sequence)) for r in curr_routes]
+            # Vary seed per iteration to avoid repeatable paths in SA
+            random.seed(42 + it)
             op = random.random()
             
             if op < 0.25 and len(valid_routes) >= 2:
-                # 1. RELOCATE: Rút ngẫu nhiên 1 trạm xe này nhét qua xe kia
+                # 1. RELOCATE
                 r1, r2 = random.sample(valid_routes, 2)
                 seq1, seq2 = list(new_routes[r1].sequence), list(new_routes[r2].sequence)
                 if seq1:
@@ -62,7 +59,7 @@ class VRPTWSolver:
                     seq2.insert(idx2, node)
                     new_routes[r1], new_routes[r2] = Route(seq1), Route(seq2)
             elif op < 0.50 and len(valid_routes) >= 2:
-                # 2. SWAP: Hoán đổi 2 trạm giữa 2 tuyến khác nhau
+                # 2. SWAP
                 r1, r2 = random.sample(valid_routes, 2)
                 seq1, seq2 = list(new_routes[r1].sequence), list(new_routes[r2].sequence)
                 if seq1 and seq2:
@@ -70,7 +67,7 @@ class VRPTWSolver:
                     seq1[idx1], seq2[idx2] = seq2[idx2], seq1[idx1]
                     new_routes[r1], new_routes[r2] = Route(seq1), Route(seq2)
             elif op < 0.75:
-                # 3. 2-OPT: Đảo ngược một đoạn trạm (Cắt đường chéo) - Khắc tinh của Quãng đường (TD) cao
+                # 3. 2-OPT
                 r1 = random.choice(valid_routes)
                 seq1 = list(new_routes[r1].sequence)
                 if len(seq1) > 2:
@@ -79,7 +76,7 @@ class VRPTWSolver:
                     seq1[idx1:idx2+1] = reversed(seq1[idx1:idx2+1])
                     new_routes[r1] = Route(seq1)
             else:
-                # 4. CROSS EXCHANGE: Kỹ thuật gốc của Kim et al.
+                # 4. CROSS EXCHANGE
                 if len(valid_routes) >= 2:
                     r1, r2 = random.sample(valid_routes, 2)
                     seq1, seq2 = list(new_routes[r1].sequence), list(new_routes[r2].sequence)
@@ -88,28 +85,29 @@ class VRPTWSolver:
                         new_routes[r1] = Route(seq1[:i1] + seq2[i2:])
                         new_routes[r2] = Route(seq2[:i2] + seq1[i1:])
             
-            new_cost = calc_cost(new_routes)
+            new_cost = calc_soft_cost(new_routes)
             
-            # Simulated Annealing acceptance criteria
-            if new_cost < best_cost or math.exp((best_cost - new_cost) / temp) > random.random():
+            # Acceptance criteria
+            if new_cost < curr_cost or math.exp((curr_cost - new_cost) / temp) > random.random():
                 curr_routes = new_routes
-                if new_cost < best_cost:
-                    best_routes = [Route(list(r.sequence)) for r in curr_routes]
-                    best_cost = new_cost
+                curr_cost = new_cost
+                
+                # If the new solution is fully feasible and has a better cost, update best_feasible_routes
+                tw, cap = self.metrics.calc_violations(new_routes)
+                if tw == 0 and cap == 0:
+                    new_cost = calc_soft_cost(new_routes)
+                    if new_cost < best_feasible_cost:
+                        best_feasible_routes = [Route(list(r.sequence)) for r in new_routes]
+                        best_feasible_cost = new_cost
             temp *= cooling
             
-        return best_routes
+        return best_feasible_routes
 
-    def solve(self, algo_type=2, initial_vehicles=3, sa_iterations=10):
-        # Cố định random seed để đảm bảo: khi tăng số vòng lặp, kết quả sẽ LUÔN LUÔN 
-        # giữ nguyên hoặc tốt lên (tính đơn điệu), không bị nhảy lung tung do khởi tạo ngẫu nhiên.
-        random.seed(42)
-        
+    def solve(self, algo_type=2, initial_vehicles=3, sa_iterations=10, optimize_overlap=False, num_seeds=5):
         n_list = [s for s in self.d.stops]
-        solved = False
         final_routes = []
         
-        # Algorithm 1: Extended Insertion without initial clustering
+        # Algorithm 1: Solomon Insertion without initial clustering
         if algo_type == 1:
             routes = []
             unrouted = set(s.id for s in n_list)
@@ -125,50 +123,93 @@ class VRPTWSolver:
             
         # Algorithm 2: Clustering-based (Cluster-First, Route-Second)
         else:
-            # Tối ưu hoá: Tính toán số lượng xe tối thiểu cần thiết
+            # Calculate theoretical minimum N based on capacity and stops limit
             min_n_capacity = sum(s.demand for s in self.d.stops) / max(1.0, self.d.route_capacity)
             min_n_stops = len(self.d.stops) / max(1.0, self.d.max_stops)
             lower_bound_N = math.ceil(max(min_n_capacity, min_n_stops))
             N = max(initial_vehicles, lower_bound_N)
             
-            max_attempts = 10
-            for attempt in range(max_attempts):
-                assgn = self.clustering.generate_clusters(n_list, N)
-                
-                routes = []
-                unrouted = set(s.id for s in n_list)
-                
-                # Mỗi cụm tự tạo bao nhiêu xe cũng được (KHÔNG đẩy trạm dư sang cụm khác)
-                # Điều này đảm bảo tính toàn vẹn của cụm và cân bằng công việc tự nhiên
-                for cluster in assgn:
-                    cluster_unrouted = set(n for n in cluster if n in unrouted)
+            best_routes = None
+            best_vn = float('inf')
+            best_td = float('inf')
+            
+            # Search over K-Means seeds to find the most route-feasible initial configuration
+            for seed in range(num_seeds):
+                curr_N = N
+                while True:
+                    assgn = self.clustering.generate_clusters(n_list, curr_N, seed=seed)
+                    clusters = [list(c) for c in assgn]
                     
-                    while cluster_unrouted:
-                        route_obj = self.insertion.solve_route(cluster_unrouted)
+                    routes = []
+                    unrouted = set(s.id for s in n_list)
+                    
+                    # Step 2: Build routes and reassign leftovers
+                    for n in range(curr_N):
+                        cluster_unrouted = [x for x in clusters[n] if x in unrouted]
+                        cluster_unrouted_set = set(cluster_unrouted)
+                        
+                        if not cluster_unrouted_set:
+                            routes.append(Route())
+                            continue
+                            
+                        route_obj = self.insertion.solve_route(cluster_unrouted_set)
+                        
                         if not route_obj or route_obj.is_empty():
+                            leftovers = list(cluster_unrouted)
+                            routes.append(Route())
+                        else:
+                            routes.append(route_obj)
+                            for node_id in route_obj:
+                                unrouted.discard(node_id)
+                            leftovers = [x for x in cluster_unrouted if x in unrouted]
+                            
+                        # Reassign leftovers to closest non-finalized cluster
+                        if leftovers and n < curr_N - 1:
+                            remaining_centroids = {}
+                            for m in range(n + 1, curr_N):
+                                active_nodes = [x for x in clusters[m] if x in unrouted]
+                                if active_nodes:
+                                    cx = sum(self.d.nodes[x].x for x in active_nodes) / len(active_nodes)
+                                    cy = sum(self.d.nodes[x].y for x in active_nodes) / len(active_nodes)
+                                    remaining_centroids[m] = (cx, cy)
+                                else:
+                                    if clusters[m]:
+                                        cx = sum(self.d.nodes[x].x for x in clusters[m]) / len(clusters[m])
+                                        cy = sum(self.d.nodes[x].y for x in clusters[m]) / len(clusters[m])
+                                        remaining_centroids[m] = (cx, cy)
+                                    else:
+                                        remaining_centroids[m] = (self.d.depot.x, self.d.depot.y)
+                                        
+                            for stop_id in leftovers:
+                                stop_node = self.d.nodes[stop_id]
+                                closest_m = min(
+                                    remaining_centroids.keys(),
+                                    key=lambda m: math.hypot(stop_node.x - remaining_centroids[m][0], stop_node.y - remaining_centroids[m][1])
+                                )
+                                clusters[closest_m].append(stop_id)
+                                
+                    actual_unrouted = [x for x in unrouted]
+                    if not actual_unrouted:
+                        break
+                    else:
+                        curr_N += 1
+                        if curr_N > N + 2:
                             break
-                        routes.append(route_obj)
-                        for n in route_obj:
-                            unrouted.discard(n)
-                            cluster_unrouted.discard(n)
-                    
-                    # Nếu còn trạm trong cụm mà insertion không xử lý được,
-                    # ép chúng vào 1 route riêng để không bỏ sót
-                    if cluster_unrouted:
-                        forced_route = Route(list(cluster_unrouted))
-                        routes.append(forced_route)
-                        for n in cluster_unrouted:
-                            unrouted.discard(n)
+                            
+                valid_routes = [r for r in routes if not r.is_empty()]
+                vn = len(valid_routes)
+                td = self.metrics.calc_td(valid_routes)
                 
-                if not unrouted:
-                    solved = True
-                    final_routes = routes
-                    break
-                else:
-                    N += 1
+                # Pick the configuration that minimizes Vn, then TD
+                if vn < best_vn or (vn == best_vn and td < best_td):
+                    best_vn = vn
+                    best_td = td
+                    best_routes = valid_routes
+                    
+            final_routes = best_routes
                 
         # Step 6: Improve routes
-        best_routes = self._sa_optimize(final_routes, iterations=sa_iterations)
+        best_routes = self._sa_optimize(final_routes, iterations=sa_iterations, optimize_overlap=optimize_overlap)
         
         vn = len([r for r in best_routes if not r.is_empty()])
         td = self.metrics.calc_td(best_routes)
@@ -189,7 +230,7 @@ benchmarks = {
 
 if __name__ == '__main__':
     d = os.path.join("Code GitHub", "WCVRPTW-benchmark-main", "instances")
-    files = sorted([f for f in os.listdir(d) if f.endswith('.txt')], key=lambda x: int(x.split('_')[0]))
+    files = sorted([f for f in os.listdir(d) if f.endswith('.txt') and f in benchmarks], key=lambda x: int(x.split('_')[0]))
     
     print("-" * 88)
     print(f"{'Problem set':<16} | {'A':>1} | {'Vn':>4} | {'Sm(mile)':>10} | {'Nh':>4} | {'TD(mile)':>10} | {'RTD(sec)':>10} | {'CT(sec)':>7}")

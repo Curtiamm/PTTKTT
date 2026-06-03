@@ -8,13 +8,28 @@ class CapacitatedClustering:
         
     def _estimate_route_time(self, cluster_nodes):
         if not cluster_nodes: return 0.0
-        tt, c, rem = 0.0, 0, set(cluster_nodes)
+        dist = 0.0
+        c = 0
+        rem = list(cluster_nodes)
+        dist_matrix = self.d.distance_matrix
         while rem:
-            nxt = min(rem, key=lambda x: self.d.distance_matrix[c][x])
-            tt += self.d.travel_time(c, nxt) + self.d.nodes[nxt].service
-            c = nxt
-            rem.remove(nxt)
-        return tt + self.d.travel_time(c, 0)
+            min_dist = float('inf')
+            min_idx = -1
+            min_node = -1
+            for idx, node in enumerate(rem):
+                d = dist_matrix[c][node]
+                if d < min_dist:
+                    min_dist = d
+                    min_idx = idx
+                    min_node = node
+            dist += min_dist
+            c = min_node
+            rem[min_idx] = rem[-1]
+            rem.pop()
+            
+        dist += dist_matrix[c][0]
+        service_sum = sum(self.d.nodes[x].service for x in cluster_nodes)
+        return dist / self.d.speed + service_sum
         
     def _tw_conflict(self, cluster_nodes, node_id):
         if not cluster_nodes: return False
@@ -28,92 +43,93 @@ class CapacitatedClustering:
                 return True
         return False
         
-    def generate_clusters(self, stops, k):
+    def generate_clusters(self, stops, k, seed=42):
         """ Generate Capacitated N clusters (Section 5) """
         k = min(k, len(stops))
         if k == 0: return []
         
+        random.seed(seed)
         centers = [(self.d.nodes[s.id].x, self.d.nodes[s.id].y) for s in random.sample(stops, k)]
-        assgn = None
+        max_hours = self.d.depot.late - self.d.depot.early
         
-        for _ in range(30):
+        for iteration in range(30):
             assgn = [[] for _ in range(k)]
-            cluster_tt = [0.0] * k
-            cluster_last = [0] * k
+            cluster_times = [0.0] * k
             
+            # Grand centroid
             gcx = sum(c[0] for c in centers) / k
             gcy = sum(c[1] for c in centers) / k
             
             sn = sorted(stops, key=lambda s: math.hypot(s.x - gcx, s.y - gcy), reverse=True)
             
-            # === CÂN BẰNG TẢI CÔNG VIỆC (Workload Balancing) ===
-            # Trần cứng: Không xe nào được nhận quá 115% số trạm trung bình
-            target_avg = len(stops) / k
-            target_stops_max = math.ceil(target_avg * 1.30)  # Nới lỏng lên 130% để giảm Quãng đường (TD) thay vì quá cứng nhắc cân bằng
-            
             for stop in sn:
-                # Tiêu chí sắp xếp kết hợp: Khoảng cách + Phạt kích thước cụm
-                # Cụm nào đã nhiều trạm sẽ bị đẩy xuống cuối danh sách ưu tiên
-                max_dist = max(math.hypot(stop.x - c[0], stop.y - c[1]) for c in centers) or 1.0
+                # Find nearest centroid without size penalty
                 ds = sorted([
-                    (math.hypot(stop.x - c[0], stop.y - c[1]) + (len(assgn[i]) / target_avg) * max_dist * 0.3, i) 
+                    (math.hypot(stop.x - c[0], stop.y - c[1]), i) 
                     for i, c in enumerate(centers)
                 ])
                 assigned = False
                 
-                # Vòng 1: Gán vào cụm thỏa mãn TẤT CẢ ràng buộc (cân bằng tải + TW + capacity)
+                def get_est_time(ci, stop_id):
+                    cl = assgn[ci]
+                    if not cl:
+                        disp = self.d.get_closest_landfill(stop_id)
+                        t = (self.d.travel_time(0, stop_id) + 
+                             self.d.travel_time(stop_id, disp.id) + 
+                             self.d.travel_time(disp.id, 0))
+                        return t + self.d.nodes[stop_id].service
+                    min_d = min(self.d.distance_matrix[x][stop_id] for x in cl)
+                    return cluster_times[ci] + min_d / self.d.speed + self.d.nodes[stop_id].service
+
+                # Round 1: All constraints (demand, max stops, TSP route time, TW conflict)
                 for _, ci in ds:
                     cl = assgn[ci]
-                    if len(cl) >= target_stops_max: continue
                     if len(cl) >= self.d.max_stops: continue
                     if sum(self.d.nodes[x].demand for x in cl) + stop.demand > self.d.route_capacity: continue
                     
-                    est_add = self.d.travel_time(cluster_last[ci], stop.id) + self.d.nodes[stop.id].service
-                    est_total = cluster_tt[ci] + est_add + self.d.travel_time(stop.id, 0)
-                    if len(cl) > 5 and est_total > 11.0: continue
+                    est_time = get_est_time(ci, stop.id)
+                    if est_time > max_hours: continue
                     
                     nearby = sorted(cl, key=lambda x: self.d.distance_matrix[stop.id][x])[:5]
                     if self._tw_conflict(nearby, stop.id): continue
                     
+                    cluster_times[ci] = est_time
                     assgn[ci].append(stop.id)
-                    cluster_tt[ci] += est_add
-                    cluster_last[ci] = stop.id
                     assigned = True
                     break
                 
-                # Vòng 2 (Nới lỏng TW): Bỏ kiểm tra Time Window, giữ cân bằng tải
-                if not assigned:
-                    for _, ci in ds:
-                        cl = assgn[ci]
-                        if len(cl) >= target_stops_max: continue
-                        if len(cl) >= self.d.max_stops: continue
-                        if sum(self.d.nodes[x].demand for x in cl) + stop.demand > self.d.route_capacity: continue
-                        
-                        assgn[ci].append(stop.id)
-                        cluster_tt[ci] += self.d.travel_time(cluster_last[ci], stop.id) + self.d.nodes[stop.id].service
-                        cluster_last[ci] = stop.id
-                        assigned = True
-                        break
-                
-                # Vòng 3 (Nới lỏng cân bằng): Bỏ giới hạn cân bằng, giữ capacity + max_stops
+                # Round 2: Relax TW conflict
                 if not assigned:
                     for _, ci in ds:
                         cl = assgn[ci]
                         if len(cl) >= self.d.max_stops: continue
                         if sum(self.d.nodes[x].demand for x in cl) + stop.demand > self.d.route_capacity: continue
                         
+                        est_time = get_est_time(ci, stop.id)
+                        if est_time > max_hours: continue
+                        
+                        cluster_times[ci] = est_time
                         assgn[ci].append(stop.id)
-                        cluster_tt[ci] += self.d.travel_time(cluster_last[ci], stop.id) + self.d.nodes[stop.id].service
-                        cluster_last[ci] = stop.id
                         assigned = True
                         break
                         
-                # Vòng 4 (Absolute Fallback): Nhét vào cụm NHỎ NHẤT (không phải gần nhất)
+                # Round 3: Relax route time capacity
+                if not assigned:
+                    for _, ci in ds:
+                        cl = assgn[ci]
+                        if len(cl) >= self.d.max_stops: continue
+                        if sum(self.d.nodes[x].demand for x in cl) + stop.demand > self.d.route_capacity: continue
+                        
+                        cluster_times[ci] = get_est_time(ci, stop.id)
+                        assgn[ci].append(stop.id)
+                        assigned = True
+                        break
+                        
+                # Round 4: Absolute Fallback (assign to smallest cluster)
                 if not assigned:
                     best_c = min(range(k), key=lambda i: len(assgn[i]))
+                    cluster_times[best_c] = get_est_time(best_c, stop.id)
                     assgn[best_c].append(stop.id)
-                    cluster_tt[best_c] += self.d.travel_time(cluster_last[best_c], stop.id) + self.d.nodes[stop.id].service
-                    cluster_last[best_c] = stop.id
                     
             new_centers = []
             for i in range(k):
@@ -123,8 +139,15 @@ class CapacitatedClustering:
                     new_centers.append((cx, cy))
                 else:
                     new_centers.append(centers[i])
+            
+            if new_centers == centers:
+                break
             centers = new_centers
             
+            # Recalculate exact cluster times for the next iteration
+            for i in range(k):
+                cluster_times[i] = self._estimate_route_time(assgn[i])
+                
         # === HẬU XỬ LÝ: TÁI CÂN BẰNG CỤM (có kiểm tra Time Window) ===
         assgn = self._rebalance_clusters(assgn, k)
         
