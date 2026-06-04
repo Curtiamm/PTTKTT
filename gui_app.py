@@ -234,13 +234,17 @@ if st.session_state.get('has_run', False) and selected_file:
         
         if use_cache and cache_key in cached_data:
             c_res = cached_data[cache_key]
-            vn = c_res["vn"]
-            sm = c_res["sm"]
-            nh = c_res["nh"]
-            td = c_res["td"]
-            rtd = c_res["rtd"]
             best_routes = [Route(seq) for seq in c_res["best_routes"]]
             ct = c_res.get("ct", 0.01)
+            
+            # Tính toán các chỉ số động trực tiếp từ lộ trình thực tế để hiển thị kết quả tối ưu thực
+            from metrics import MetricsCalculator
+            mc = MetricsCalculator(data)
+            vn = len([r for r in best_routes if not r.is_empty()])
+            td = mc.calc_td(best_routes)
+            rtd = mc.calc_rtd(best_routes)
+            sm = mc.calc_shape_metric(best_routes)
+            nh = mc.calc_nh(best_routes)
             
             st.session_state.single_run_results = (vn, sm, nh, td, rtd, best_routes, ct)
             st.session_state.last_run_key = run_key

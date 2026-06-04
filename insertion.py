@@ -301,8 +301,17 @@ class ExtendedInsertion:
                     d_ij = self.d.distance_matrix[seq[i-1]][seq[i]]
                     c1 = d_iu + d_uj - mu * d_ij
                     
-                    if c1 < best_score:
-                        best_score = c1
+                    # c2 = delay in service start time at seq[i]
+                    orig_b = max(prefix_states[i][5], self.d.nodes[seq[i]].early)
+                    new_b = max(arr_i_new, self.d.nodes[seq[i]].early)
+                    c2 = new_b - orig_b
+                    
+                    # Solomon cost function: lambda * c1 + (1 - lambda) * c2
+                    lam = 0.5
+                    score = lam * c1 + (1.0 - lam) * c2
+                    
+                    if score < best_score:
+                        best_score = score
                         best_node = u
                         best_pos = i
                         
