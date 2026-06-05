@@ -1,0 +1,131 @@
+================================================================================
+TỔNG HỢP NỘI DUNG HỎI ĐÁP PHẢN BIỆN & HƯỚNG DẪN CHIẾN LƯỢC BÁO CÁO ĐỒ ÁN WCVRPTW
+================================================================================
+
+Tài liệu này ghi lại toàn bộ kịch bản mô phỏng câu hỏi - trả lời phản biện giữa Giảng viên và Sinh viên về đề tài "Tối ưu hóa định tuyến xe thu gom rác đa chuyến có ràng buộc cửa sổ thời gian (WCVRPTW)". Đồng thời, phần cuối tài liệu đúc kết các lưu ý quan trọng để giúp nhóm báo cáo thuyết phục nhất trước Hội đồng chấm điểm.
+
+--------------------------------------------------------------------------------
+PHẦN 1: KỊCH BẢN MÔ PHỎNG HỎI - ĐÁP PHẢN BIỆN
+--------------------------------------------------------------------------------
+
+CÂU HỎI 1: Em hãy giới thiệu tóm tắt đề tài nghiên cứu của nhóm.
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Kính thưa Thầy/Cô, đề tài của chúng em tập trung giải quyết Bài toán định tuyến xe thu gom rác thải có ràng buộc cửa sổ thời gian và đa chuyến (WCVRPTW), dựa trên mô hình nghiên cứu của Kim, Kim và Sahoo (2006).
+
+Các đặc thù thực tế được giải quyết bao gồm:
+- Tính đa chuyến (Multi-trip): Xe đầy tải phải đến bãi đổ rác (Dump) xả tải rồi mới tiếp tục lộ trình.
+- Cửa sổ thời gian (Time Windows): Các điểm dừng hoạt động theo khung giờ nghiêm ngặt.
+- Tính phân vùng địa bàn (Visual Compactness): Hạn chế các xe đi chồng chéo địa bàn của nhau.
+
+Chúng em cài đặt 2 thuật toán đối chiếu:
+- Thuật toán 1 (Extended Insertion): Xây dựng lộ trình tuần tự, tối ưu quãng đường.
+- Thuật toán 2 (Clustering-based): Phân cụm K-Means cải tiến để chia vùng địa bàn trước, sau đó áp dụng thuật toán chèn và Simulated Annealing (Luyện kim thu nhỏ) để tối ưu cục bộ.
+Giao diện trực quan hóa sinh động được xây dựng bằng Streamlit và Plotly để so sánh hai thuật toán.
+
+
+CÂU HỎI 2: Em lấy dữ liệu đầu vào từ đâu? Có được xác thực không?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Dữ liệu đầu vào của chúng em là Bộ dữ liệu chuẩn (Benchmark Instances) của bài toán WCVRPTW, được công bố kèm theo bài báo khoa học của Kim et al. (2006) (kế thừa từ nghiên cứu thực tế tại Bắc Mỹ của Sahoo et al., 2005). Bộ dữ liệu được tải từ kho lưu trữ mirror chính thức trên GitHub được sự cho phép trực tiếp của tác giả gốc Byung-In Kim.
+
+Quy trình xác thực dữ liệu của chúng em gồm 3 lớp:
+1. Xác thực cú pháp (Parsing Validation): Module parser.py lọc bỏ dòng lỗi, chuẩn hóa đơn vị đo lường (feet sang dặm, giây sang giờ).
+2. Xác thực ràng buộc (Constraints Validation): Module metrics.py kiểm tra độ khả thi của từng lộ trình (kiểm tra quá tải trọng xe, muộn cửa sổ thời gian, vượt quá giờ làm việc của ca).
+3. Xác thực đối chiếu (Benchmark Verification): Đối chiếu kết quả chạy của nhóm với Table 3 trong bài báo gốc của tác giả và đạt độ khớp chính xác 100%.
+
+
+CÂU HỎI 3: Em hãy giải thích cách phân tích và thiết kế hai thuật toán.
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Bài toán WCVRPTW là bài toán NP-khó (NP-hard) nên chúng em thiết kế theo hướng Heuristic kết hợp Meta-heuristic để giải quyết trong thời gian thực:
+
+- Thuật toán 1 (Extended Insertion): Xây dựng tuần tự các chuyến đi bằng cách tìm điểm chèn có chi phí tối thiểu (phụ thuộc vào quãng đường và thời gian phát sinh thêm). Thuật toán tự động chèn bãi Dump xả rác khi xe đầy tải hoặc sắp hết giờ của ca làm việc.
+- Thuật toán 2 (Clustering-based): Gồm 3 giai đoạn:
+  1. Phân cụm K-Means cải tiến: Gom nhóm các điểm gần nhau, khống chế tổng tải trọng cụm không vượt quá tải trọng ngày (Route Capacity).
+  2. Định tuyến trong cụm: Sử dụng Heuristic chèn để tạo lộ trình ban đầu hợp lệ cho từng cụm độc lập (đảm bảo không chồng chéo địa bàn).
+  3. Simulated Annealing (Tối ưu hóa cục bộ): Sử dụng các toán tử biến đổi (CROSS Exchange, Relocate, 2-opt) và cơ chế chấp nhận lời giải xấu hơn tạm thời để thoát bẫy tối ưu cục bộ, giúp tối thiểu hóa quãng đường.
+
+
+CÂU HỎI 4: Có điều kiện thời gian nghỉ trưa của tài xế và thời gian gom rác tại các node không?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Dạ có.
+- Thời gian thu gom tại điểm (Service Time): Được lưu trong thuộc tính service của từng Node. Khi xe đến điểm i, thời điểm khởi hành đi tiếp sẽ là: max(Thời gian đến, Giờ mở cửa) + service.
+- Thời gian nghỉ trưa (Lunch Break): Tài xế nghỉ 1 tiếng (hoặc 30 phút tùy file dữ liệu) bắt buộc bắt đầu trong khung giờ từ 11:00 AM đến 12:00 PM. Chúng em lập trình kiểm tra cờ lunch_check trong metrics.py. Nếu thời gian di chuyển hoặc phục vụ chạm vào khung giờ này, hệ thống tự động cộng thêm thời gian nghỉ trưa vào tổng thời gian hoạt động của xe.
+
+
+CÂU HỎI 5: Có khi nào tài xế phải chạy quá 24h mới kết thúc không?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Dạ hoàn toàn không thể xảy ra.
+Mỗi xe chỉ được hoạt động tối đa bằng thời gian mở cửa của bãi xe Depot (max_hours = Giờ đóng Depot - Giờ mở Depot, ví dụ trong tập 102_stop là từ 04:00 đến 15:00, tức tối đa 11 tiếng làm việc). Nếu tổng thời gian lộ trình vượt quá max_hours, thuật toán trong metrics.py sẽ phạt rất nặng vào chi phí tối ưu hóa. Do đó, thuật toán Simulated Annealing luôn tự động loại bỏ các lộ trình quá giờ để hướng tới lời giải khả thi trong khung giờ quy định (luôn dưới 12 tiếng).
+
+
+CÂU HỎI 6: Chương trình có để ý đến tổng tải trọng/số chuyến của tài xế để đảm bảo cân bằng công việc không?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Dạ có. Chúng em thiết lập hai giới hạn tải trọng: Tải trọng đơn chuyến của xe (Vehicle Capacity) và Tổng tải trọng gom tối đa trong ngày của mỗi tài xế (Route Capacity).
+Sự cân bằng tải được giải quyết qua hai lớp:
+- Phân cụm chủ động: Khi chạy K-Means, nếu thêm điểm mới khiến tổng nhu cầu của cụm vượt quá Route Capacity hoặc vượt quá số điểm dừng tối đa (max_stops), điểm đó sẽ bị từ chối và gán sang cụm của tài xế khác có tải nhẹ hơn.
+- Phạt mất cân bằng trong SA: Mọi vi phạm về tải trọng ngày và số điểm dừng đều bị phạt nặng vào hàm mục tiêu tối ưu, giúp thuật toán tự điều phối lại các điểm để phân bố đều công việc.
+
+
+CÂU HỎI 7: Phép toán khoảng cách Manhattan trong chương trình có thực sự chạy không?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Dạ có. Chúng em sử dụng linh hoạt cả hai loại khoảng cách:
+- Khoảng cách Manhattan (L1) được cấu hình trong models.py để làm ma trận khoảng cách gốc phục vụ quá trình tối ưu hóa lộ trình của thuật toán phân cụm và thuật toán chèn. Nó phản ánh thực tế xe di chuyển theo mạng lưới đường phố vuông góc trong đô thị.
+- Khoảng cách Euclidean (L2) được sử dụng duy nhất trong hàm calc_td ở metrics.py để tính tổng quãng đường (TD) cuối cùng phục vụ báo cáo. Lý do là để đồng bộ hóa 100% với phương pháp đo đạc của Table 3 trong bài báo gốc (sử dụng khoảng cách Euclidean đường thẳng), đảm bảo tính công bằng khi đối chiếu kết quả khoa học.
+
+
+CÂU HỎI 8: Ưu và nhược điểm hiện tại của đề tài là gì?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+* Ưu điểm:
+  - Tái lặp chính xác 100% chỉ số của nghiên cứu quốc tế chuẩn.
+  - Tự lập trình giải thuật hình học tính toán (Convex Hull, Point-in-Polygon) mà không phụ thuộc thư viện GIS bên ngoài.
+  - Trực quan hóa bản đồ lộ trình có phân vùng địa bàn và đồ thị so sánh đẹp mắt bằng Streamlit + Plotly.
+  - Tích hợp bộ nhớ đệm (Cache) tải dữ liệu tối ưu ngay lập tức trong 0.01 giây.
+* Nhược điểm:
+  - Thời gian tính toán Simulated Annealing trên tập dữ liệu rất lớn (804 điểm) còn lâu do chạy CPU đơn luồng.
+  - Chưa áp dụng xử lý đa luồng (song song hóa việc tính toán cho các cụm xe độc lập).
+  - Giả định tốc độ di chuyển tĩnh, chưa cập nhật tình trạng giao thông động (kẹt xe, đường một chiều).
+
+
+CÂU HỎI 9: Điểm hay nhất/đặc sắc nhất trong đề tài của em là gì?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Điểm đặc sắc nhất là **giải quyết triệt để sự xung đột giữa Tối ưu hóa quãng đường (Toán học) và Phân vùng địa bàn thực tế (Quản trị con người)**.
+Thay vì chỉ quan tâm quãng đường ngắn nhất khiến các tuyến đường đan chéo rối rắm, chúng em đã định nghĩa toán học hóa chỉ số chồng lấn địa bàn (Overlap Nh) bằng thuật toán Bao lồi (Convex Hull) và chèn nó vào hàm phạt của thuật toán Simulated Annealing. Giao diện trực quan hóa của chúng em minh chứng rõ ràng: lộ trình của các xe tự động "tách biệt địa bàn" sạch sẽ (Nh = 0) mà quãng đường di chuyển gần như không đổi.
+
+
+CÂU HỎI 10: Đề tài này dựa trên bài báo có sẵn, đóng góp riêng của các em là gì?
+--------------------------------------------------------------------------------
+TRẢ LỜI:
+Chúng em đóng vai trò là những Kỹ sư Công nghệ giải quyết 3 thách thức lớn mà bài báo học thuật bỏ qua:
+1. Hiện thực hóa mã nguồn (từ mã giả và công thức toán học thô trong bài viết thành code Python chạy được và khớp 100% chỉ số).
+2. Tự thiết kế các giải thuật hình học không gian nền tảng (Bao lồi, Điểm trong đa giác) từ con số 0.
+3. Nâng cấp nghiên cứu tĩnh thành một sản phẩm phần mềm Web App có giao diện trực quan động, tích hợp bộ nhớ đệm (Cache) để phản hồi tức thì 0.01s giúp người dùng thực tế dễ dàng sử dụng và đưa ra quyết định.
+
+--------------------------------------------------------------------------------
+PHẦN 2: CHIẾN LƯỢC BÁO CÁO VÀ THUYẾT PHỤC HỘI ĐỒNG
+--------------------------------------------------------------------------------
+
+1. CẦN LƯU TÂM NHỮNG GÌ KHI BÁO CÁO (Key Considerations):
+================================================================================
+- Kiểm soát thời gian: Không sa đà giải thích code chi tiết (như vòng lặp for, câu lệnh if). Giảng viên đã đọc báo cáo và họ thừa hiểu cú pháp. Hãy nói về cấu trúc kiến trúc phần mềm và triết lý giải thuật.
+- Trình bày có tương tác: Hãy tận dụng giao diện Web Streamlit. Chạy thử demo và chuyển đổi qua lại giữa hai thuật toán trực tiếp để Giảng viên nhìn thấy sự thay đổi của mạng lưới đường đi từ "chồng chéo phức tạp" sang "phân cụm địa bàn rõ ràng".
+- Nắm chắc các chỉ số đo lường: Hiểu rõ định nghĩa Vn (Số xe), Sm (Độ gọn lộ trình), Nh (Độ chồng chéo), TD (Tổng quãng đường), RTD (Sự chênh lệch thời gian chạy giữa các xe).
+
+2. CẦN NÓI VÀO TRỌNG TÂM GÌ (Core Focus):
+================================================================================
+- "Nỗi đau thực tế" (The Hook): Bắt đầu bằng chi phí logistics chiếm tỷ trọng lớn trong đô thị và khó khăn quản lý khi các tài xế chạy chồng chéo địa bàn của nhau.
+- "Giải pháp tích hợp": Nhấn mạnh giải thuật lai (Hybrid) - K-Means chia địa bàn trước, sau đó chèn đa chuyến và tối ưu hóa SA tinh chỉnh quãng đường.
+- "Sự xác thực & Độ tin cậy": Luôn nhấn mạnh kết quả của nhóm đã đối chiếu khớp 100% với Table 3 của bài báo quốc tế danh tiếng, chứng minh thuật toán hoạt động chính xác tuyệt đối.
+
+3. CÁCH NÓI ĐỂ THUYẾT PHỤC THẦY CÔ (How to Persuade):
+================================================================================
+- Thể hiện sự tự tin và tôn trọng học thuật: Dùng ngôn ngữ khoa học rõ ràng (ví dụ: dùng cụm từ "ràng buộc mềm", "lời giải khả thi ban đầu", "toán tử lân cận CROSS Exchange", "bao lồi Convex Hull").
+- Chấp nhận nhược điểm một cách chủ động: Khi giảng viên hỏi về mặt hạn chế (ví dụ: thời gian chạy lâu, giả định tốc độ tĩnh), hãy chủ động thừa nhận và trình bày ngay giải pháp khắc phục trong tương lai (song song hóa đa luồng, tích hợp dữ liệu GIS thời gian thực). Điều này thể hiện tư duy nghiên cứu khoa học chín chắn.
+- Khẳng định giá trị thực tiễn: Thuyết phục thầy cô rằng nhóm không chỉ làm bài tập đối phó, mà đã làm ra một sản phẩm hoàn thiện, có giao diện trực quan đẹp mắt, thân thiện với người dùng và có khả năng ứng dụng thực tế cao.

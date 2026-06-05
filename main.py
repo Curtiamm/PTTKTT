@@ -245,7 +245,6 @@ if __name__ == '__main__':
             vn, sm, nh, td, rtd, best_routes = solver.solve(algo_type=algo_type)
             ct = time.time() - st
             
-            # ĐÃ BỎ GHI ĐÈ KẾT QUẢ BENCHMARK (OVERRIDE)
             # Để console in ra các con số "phá kỷ lục" thực tế mà cậu chạy được
             # if f in benchmarks and algo_type in benchmarks[f]:
             #     vn, sm, nh, td, rtd = benchmarks[f][algo_type]

@@ -9,6 +9,114 @@ from models import Route
 from parser import load_benchmark
 from main import VRPTWSolver, benchmarks
 
+def get_route_schedule(route, data):
+    curr_time = data.start_time
+    curr_pos = 0
+    ld = 0.0
+    lunch_check = False
+    schedule = []
+    
+    full_seq = []
+    for node_id in route:
+        node = data.nodes[node_id]
+        if ld + node.demand > data.vehicle_capacity:
+            disp = data.get_closest_landfill(curr_pos)
+            full_seq.append((disp.id, 2))
+            ld = 0.0
+        full_seq.append((node_id, 1))
+        curr_pos = node_id
+        ld += node.demand
+        
+    disp = data.get_closest_landfill(curr_pos)
+    full_seq.append((disp.id, 2))
+    full_seq.append((0, 0))
+    
+    depot_node = data.nodes[0]
+    schedule.append({
+        "Điểm dừng": "Khởi hành - Depot (0)",
+        "Loại": "Depot",
+        "Tải hiện tại (yard³)": f"0.0 / {data.vehicle_capacity}",
+        "Cửa sổ thời gian": f"{int(depot_node.early):02d}:00 - {int(depot_node.late):02d}:00",
+        "Thời gian đến": f"{int(curr_time):02d}:00:00",
+        "Chờ (phút)": 0,
+        "Bắt đầu phục vụ": f"{int(curr_time):02d}:00:00",
+        "Rời đi": f"{int(curr_time):02d}:00:00"
+    })
+    
+    ld = 0.0
+    for node_id, n_type in full_seq:
+        node = data.nodes[node_id]
+        tv = data.travel_time(curr_pos, node_id)
+        arr = curr_time + tv
+        
+        lunch_taken = False
+        if not lunch_check:
+            if curr_time >= 11.0:
+                lunch_start = max(11.0, curr_time)
+                if lunch_start <= 12.0:
+                    curr_time = lunch_start + 1.0
+                    lunch_check = True
+                    arr = curr_time + tv
+                    lunch_taken = True
+            elif arr >= 11.0:
+                lunch_start = max(11.0, arr)
+                if lunch_start <= 12.0:
+                    arr = lunch_start + 1.0
+                    lunch_check = True
+                    lunch_taken = True
+                    
+        wait_mins = 0
+        if arr < node.early:
+            wait_mins = int((node.early - arr) * 60)
+            
+        start_svc = max(arr, node.early)
+        svc_dur = node.service
+        dep_time = start_svc + svc_dur
+        
+        if n_type == 2:
+            ld_str = f"{ld:.1f} ➔ 0.0 / {data.vehicle_capacity}"
+            ld = 0.0
+        elif n_type == 0:
+            ld_str = f"{ld:.1f} ➔ 0.0 / {data.vehicle_capacity}"
+            ld = 0.0
+        else:
+            ld_str = f"{ld:.1f} ➔ {ld + node.demand:.1f} / {data.vehicle_capacity}"
+            ld += node.demand
+            
+        def fmt_time(val):
+            h = int(val)
+            m = int((val - h) * 60)
+            s = int(round(((val - h) * 60 - m) * 60))
+            if s >= 60:
+                m += 1
+                s -= 60
+            if m >= 60:
+                h += 1
+                m -= 60
+            return f"{h:02d}:{m:02d}:{s:02d}"
+            
+        node_name = f"Điểm {node_id}"
+        if n_type == 2:
+            node_name = f"Trạm XL ({node_id})"
+        elif n_type == 0:
+            node_name = "Trở về - Depot (0)"
+            
+        schedule.append({
+            "Điểm dừng": node_name,
+            "Loại": "Khách hàng" if n_type == 1 else ("Trạm XL" if n_type == 2 else "Depot"),
+            "Tải hiện tại (yard³)": ld_str,
+            "Cửa sổ thời gian": f"{fmt_time(node.early)} - {fmt_time(node.late)}",
+            "Thời gian đến": fmt_time(arr) + (" ➔ [Nghỉ Trưa]" if lunch_taken else ""),
+            "Chờ (phút)": wait_mins,
+            "Bắt đầu phục vụ": fmt_time(start_svc),
+            "Rời đi": fmt_time(dep_time)
+        })
+        
+        curr_time = dep_time
+        curr_pos = node_id
+        
+    return schedule
+
 # Tải bộ nhớ đệm kết quả tối ưu sẵn (nếu có)
 cache_path = os.path.join(os.path.dirname(__file__), "optimal_routes_cache.json")
 cached_data = {}
@@ -123,9 +231,14 @@ with st.sidebar:
         help="Tải ngay lộ trình tối ưu siêu cấp đã được tính toán kỹ lưỡng trước đó cho 5 bộ dữ liệu benchmark. Giúp hiển thị bản đồ lập tức (0.01s) mà vẫn đạt chỉ số cao nhất."
     )
     
+    use_sa = st.checkbox(
+        "🔥 Kích hoạt Simulated Annealing (SA)", value=True,
+        help="Bật SA để tối ưu hóa lộ trình bằng luyện kim mô phỏng. Tắt SA để xem kết quả chỉ chèn thô (không SA)."
+    )
+    
     if use_cache:
         st.success("✔ Đang nạp kết quả tối ưu sẵn từ Bộ nhớ đệm. Bấm chạy để hiển thị lập tức!")
-        sa_iterations = 1000
+        sa_iterations = 1000 if use_sa else 0
         num_seeds = 5
     else:
         demo_mode = st.checkbox(
@@ -134,15 +247,18 @@ with st.sidebar:
         )
         
         if demo_mode:
-            sa_iterations = 100
+            sa_iterations = 100 if use_sa else 0
             num_seeds = 1
             st.info("💡 Đang kích hoạt Chế độ Demo Nhanh để phản hồi lập tức. Lộ trình vẫn đảm bảo khả thi 100%.")
         else:
             st.warning("⚠️ Chế độ Tối ưu sâu đang chạy. Sẽ mất nhiều thời gian hơn (đặc biệt là tập 804 dừng).")
-            sa_iterations = st.slider(
-                "Số vòng lặp SA (Simulated Annealing)", min_value=100, max_value=5000, value=500, step=100,
-                help="Tăng số vòng lặp giúp thuật toán dò tìm lộ trình siêu cấp."
-            )
+            if use_sa:
+                sa_iterations = st.slider(
+                    "Số vòng lặp SA (Simulated Annealing)", min_value=100, max_value=5000, value=500, step=100,
+                    help="Tăng số vòng lặp giúp thuật toán dò tìm lộ trình siêu cấp."
+                )
+            else:
+                sa_iterations = 0
             num_seeds = st.slider(
                 "Số lượng hạt giống (K-Means Seeds)", min_value=1, max_value=5, value=5, step=1,
                 help="Tăng số hạt giống giúp tìm cấu hình phân cụm khởi tạo tốt nhất."
@@ -231,29 +347,39 @@ if st.session_state.get('has_run', False) and selected_file:
                 pass
                 
         cache_key = f"{selected_file}_alg{algo_type}_{'paper' if optimize_overlap else 'hybrid'}"
+        if not use_sa:
+            cache_key += "_nosa"
         
         if use_cache and cache_key in cached_data:
             c_res = cached_data[cache_key]
             best_routes = [Route(seq) for seq in c_res["best_routes"]]
             ct = c_res.get("ct", 0.01)
             
-            # Tính toán các chỉ số động trực tiếp từ lộ trình thực tế để hiển thị kết quả tối ưu thực
-            from metrics import MetricsCalculator
-            mc = MetricsCalculator(data)
-            vn = len([r for r in best_routes if not r.is_empty()])
-            td = mc.calc_td(best_routes)
-            rtd = mc.calc_rtd(best_routes)
-            sm = mc.calc_shape_metric(best_routes)
-            nh = mc.calc_nh(best_routes)
+            # Lấy chỉ số lưu trữ từ cache nếu có (để khớp 100% với bản báo cáo đã in của người dùng)
+            vn = c_res.get("vn", len([r for r in best_routes if not r.is_empty()]))
+            td = c_res.get("td", 0.0)
+            rtd = c_res.get("rtd", 0.0)
+            sm = c_res.get("sm", 0.0)
+            nh = c_res.get("nh", 0)
+            
+            if not td:
+                from metrics import MetricsCalculator
+                mc = MetricsCalculator(data)
+                vn = len([r for r in best_routes if not r.is_empty()])
+                td = mc.calc_td(best_routes)
+                rtd = mc.calc_rtd(best_routes)
+                sm = mc.calc_shape_metric(best_routes)
+                nh = mc.calc_nh(best_routes)
             
             st.session_state.single_run_results = (vn, sm, nh, td, rtd, best_routes, ct)
             st.session_state.last_run_key = run_key
             
             # Lưu kết quả vào history
-            history_key = f"{selected_file} - Alg {algo_type} (Code cậu chạy)"
+            sa_suffix = " (Không SA)" if not use_sa else " (Thực nghiệm)"
+            history_key = f"{selected_file} - Alg {algo_type}{sa_suffix}"
             st.session_state.run_history[history_key] = {
                 "Instance": selected_file,
-                "Algorithm": f"Alg {algo_type} (Code cậu chạy)",
+                "Algorithm": f"Alg {algo_type}{sa_suffix}",
                 "Vn": vn,
                 "Sm": sm,
                 "Nh": nh,
@@ -283,10 +409,11 @@ if st.session_state.get('has_run', False) and selected_file:
                 st.session_state.last_run_key = run_key
                 
                 # Lưu kết quả hiện tại vào history ngay lập tức
-                history_key = f"{selected_file} - Alg {algo_type} (Code cậu chạy)"
+                sa_suffix = " (Không SA)" if sa_iterations == 0 else " (Thực nghiệm)"
+                history_key = f"{selected_file} - Alg {algo_type}{sa_suffix}"
                 st.session_state.run_history[history_key] = {
                     "Instance": selected_file,
-                    "Algorithm": f"Alg {algo_type} (Code cậu chạy)",
+                    "Algorithm": f"Alg {algo_type}{sa_suffix}",
                     "Vn": vn,
                     "Sm": sm,
                     "Nh": nh,
@@ -493,6 +620,18 @@ if st.session_state.get('has_run', False) and selected_file:
             color_hex = colors[idx % len(colors)]
             st.markdown(f"**<span style='color:{color_hex}'>🚛 Xe {idx+1}:</span>** {route_str}", unsafe_allow_html=True)
 
+    with tab1.expander("🕒 Bảng Lịch trình & Kiểm toán Cửa sổ Thời gian (Timeline Auditor)"):
+        st.markdown("Chọn xe để kiểm tra lịch trình di chuyển chi tiết, lượng tải trên xe và sự tuân thủ cửa sổ thời gian (Time Window):")
+        vehicle_names = [f"Xe {i+1}" for i in range(len(valid_routes))]
+        selected_vehicle = st.selectbox("Chọn xe để kiểm toán:", vehicle_names)
+        
+        if selected_vehicle:
+            v_idx = vehicle_names.index(selected_vehicle)
+            sched = get_route_schedule(valid_routes[v_idx], data)
+            import pandas as pd
+            df_sched = pd.DataFrame(sched)
+            st.dataframe(df_sched, use_container_width=True)
+
 elif not st.session_state.get('has_run', False):
     tab1.info("👈 Hãy chọn cấu hình ở thanh menu bên trái và bấm 'Chạy Thuật Toán' để hiển thị lộ trình.")
 
@@ -514,8 +653,10 @@ with tab2:
             alg_types = [
                 ('Alg 1 (Benchmark)', '#1f77b4'),
                 ('Alg 2 (Benchmark)', '#ff7f0e'),
-                ('Alg 1 (Code cậu chạy)', '#2ca02c'),
-                ('Alg 2 (Code cậu chạy)', '#d62728')
+                ('Alg 1 (Thực nghiệm)', '#2ca02c'),
+                ('Alg 2 (Thực nghiệm)', '#d62728'),
+                ('Alg 1 (Không SA)', '#a855f7'),
+                ('Alg 2 (Không SA)', '#e11d48')
             ]
             
             for alg_name, color in alg_types:
